@@ -168,16 +168,42 @@ run_custom_script() {
     local log_file="$2"
     local width=$(get_ui_width)
 
-    local exec_files=($(find . -maxdepth 1 -type f -executable 2>/dev/null | sed 's|^\./||'))
+    local exec_files=($(find . -maxdepth 1 -type f -executable 2>/dev/null | sed 's|^\./||' | sort))
     
-    if [ ${#exec_files[@]} -gt 0 ]; then
-        render_menu "Executable files in directory" "${exec_files[@]}"
-    else
+    if [ ${#exec_files[@]} -eq 0 ]; then
         warning_message "No executable files found"
+        return
     fi
 
-    read -p "Enter script name to run (or Enter to skip): " script
+    # Create display list with numbers
+    local display_list=()
+    local i=1
+    for file in "${exec_files[@]}"; do
+        display_list+=("${COLOR_GREEN}${i})${NC} $file")
+        ((i++))
+    done
+
+    render_menu "Executable files in directory" "${display_list[@]}"
+
+    local script=""
+    read -p "Enter number or script name to run (or Enter to skip): " input
+
+    if [ -z "$input" ]; then
+        return
+    fi
+
+    # Check if input is a valid number
+    if [[ "$input" =~ ^[0-9]+$ ]] && [ "$input" -ge 1 ] && [ "$input" -le ${#exec_files[@]} ]; then
+        script="${exec_files[$((input-1))]}"
+    elif [[ -f "$input" && -x "$input" ]]; then
+        script="$input"
+    else
+        error_message "Invalid selection or file not found"
+        return
+    fi
+
     if [ -n "$script" ]; then
+        echo -e "\n${COLOR_CYAN}Running: ./$script${NC}\n"
         if [ -n "$log_file" ]; then
             "./$script" 2>&1 | tee "$log_file"
         else
