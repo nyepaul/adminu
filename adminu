@@ -37,16 +37,14 @@ view_submenu() {
     while true; do
         display_project_header "$project - View"
 
-        echo -e "${COLOR_YELLOW}View Options:${NC}"
-        echo ""
-        echo -e " ${COLOR_GREEN}1)${NC} Overview (README/CLAUDE.md)"
-        echo -e " ${COLOR_GREEN}2)${NC} Files (browse directory)"
-        echo -e " ${COLOR_GREEN}3)${NC} Logs (recent activity)"
-        echo -e " ${COLOR_GREEN}4)${NC} Git status"
-        echo -e " ${COLOR_GREEN}5)${NC} Project status (all)"
-        echo ""
-        echo -e " ${COLOR_GREEN}b)${NC} Back"
-        echo ""
+        render_menu "View Options" \
+            "${COLOR_GREEN}1)${NC} Overview (README/CLAUDE.md)" \
+            "${COLOR_GREEN}2)${NC} Files (browse directory)" \
+            "${COLOR_GREEN}3)${NC} Logs (recent activity)" \
+            "${COLOR_GREEN}4)${NC} Git status" \
+            "${COLOR_GREEN}5)${NC} Project status (all)" \
+            "" \
+            "${COLOR_GREEN}b)${NC} Back"
 
         local choice
         read -p "Select option: " choice
@@ -102,15 +100,13 @@ run_submenu() {
     while true; do
         display_project_header "$project - Run"
 
-        echo -e "${COLOR_YELLOW}Run Options:${NC}"
-        echo ""
-        echo -e " ${COLOR_GREEN}1)${NC} Start project"
-        echo -e " ${COLOR_GREEN}2)${NC} Stop project"
-        echo -e " ${COLOR_GREEN}3)${NC} Show status"
-        echo -e " ${COLOR_GREEN}4)${NC} Tail logs"
-        echo ""
-        echo -e " ${COLOR_GREEN}b)${NC} Back"
-        echo ""
+        render_menu "Run Options" \
+            "${COLOR_GREEN}1)${NC} Start project" \
+            "${COLOR_GREEN}2)${NC} Stop project" \
+            "${COLOR_GREEN}3)${NC} Show status" \
+            "${COLOR_GREEN}4)${NC} Tail logs" \
+            "" \
+            "${COLOR_GREEN}b)${NC} Back"
 
         local choice
         read -p "Select option: " choice
@@ -148,13 +144,11 @@ test_submenu() {
     while true; do
         display_project_header "$project - Test"
 
-        echo -e "${COLOR_YELLOW}Test Options:${NC}"
-        echo ""
-        echo -e " ${COLOR_GREEN}1)${NC} Run tests"
-        echo -e " ${COLOR_GREEN}2)${NC} Show test history"
-        echo ""
-        echo -e " ${COLOR_GREEN}b)${NC} Back"
-        echo ""
+        render_menu "Test Options" \
+            "${COLOR_GREEN}1)${NC} Run tests" \
+            "${COLOR_GREEN}2)${NC} Show test history" \
+            "" \
+            "${COLOR_GREEN}b)${NC} Back"
 
         local choice
         read -p "Select option: " choice
@@ -189,17 +183,15 @@ claude_submenu() {
     local project_dir="$SRC_DIR/$project"
 
     while true; do
-        display_project_header "$project - Claude Code"
+        display_project_header "$project - Claude"
 
-        echo -e "${COLOR_YELLOW}Claude Options:${NC}"
-        echo ""
-        echo -e " ${COLOR_GREEN}1)${NC} Launch Claude Code"
-        echo -e " ${COLOR_GREEN}2)${NC} Launch with context selection"
-        echo -e " ${COLOR_GREEN}3)${NC} Edit CLAUDE.md"
-        echo -e " ${COLOR_GREEN}4)${NC} Validate CLAUDE.md"
-        echo ""
-        echo -e " ${COLOR_GREEN}b)${NC} Back"
-        echo ""
+        render_menu "Claude Options" \
+            "${COLOR_GREEN}1)${NC} Launch Claude Code" \
+            "${COLOR_GREEN}2)${NC} Launch with context selection" \
+            "${COLOR_GREEN}3)${NC} Edit CLAUDE.md" \
+            "${COLOR_GREEN}4)${NC} Validate CLAUDE.md" \
+            "" \
+            "${COLOR_GREEN}b)${NC} Back"
 
         local choice
         read -p "Select option: " choice
@@ -237,13 +229,11 @@ gemini_submenu() {
     while true; do
         display_project_header "$project - Gemini"
 
-        echo -e "${COLOR_YELLOW}Gemini Options:${NC}"
-        echo ""
-        echo -e " ${COLOR_GREEN}1)${NC} Launch Gemini"
-        echo -e " ${COLOR_GREEN}2)${NC} Edit GEMINI.md"
-        echo ""
-        echo -e " ${COLOR_GREEN}b)${NC} Back"
-        echo ""
+        render_menu "Gemini Options" \
+            "${COLOR_GREEN}1)${NC} Launch Gemini" \
+            "${COLOR_GREEN}2)${NC} Edit GEMINI.md" \
+            "" \
+            "${COLOR_GREEN}b)${NC} Back"
 
         local choice
         read -p "Select option: " choice
@@ -280,15 +270,13 @@ tools_submenu() {
     while true; do
         display_project_header "$project - Tools"
 
-        echo -e "${COLOR_YELLOW}Tools:${NC}"
-        echo ""
-        echo -e " ${COLOR_GREEN}1)${NC} Open in file manager"
-        echo -e " ${COLOR_GREEN}2)${NC} Open terminal here"
-        echo -e " ${COLOR_GREEN}3)${NC} Git status"
-        echo -e " ${COLOR_GREEN}4)${NC} Docker status (if applicable)"
-        echo ""
-        echo -e " ${COLOR_GREEN}b)${NC} Back"
-        echo ""
+        render_menu "Tools" \
+            "${COLOR_GREEN}1)${NC} Open in file manager" \
+            "${COLOR_GREEN}2)${NC} Open terminal here" \
+            "${COLOR_GREEN}3)${NC} Git status" \
+            "${COLOR_GREEN}4)${NC} Docker status (if applicable)" \
+            "" \
+            "${COLOR_GREEN}b)${NC} Back"
 
         local choice
         read -p "Select option: " choice
@@ -346,13 +334,11 @@ settings_submenu() {
 
         local is_fav=$(is_favorite "$project" && echo "yes" || echo "no")
 
-        echo -e "${COLOR_YELLOW}Project Settings:${NC}"
-        echo ""
-        echo -e " ${COLOR_GREEN}1)${NC} Toggle favorite (currently: $is_fav)"
-        echo -e " ${COLOR_GREEN}2)${NC} View recent actions"
-        echo ""
-        echo -e " ${COLOR_GREEN}b)${NC} Back"
-        echo ""
+        render_menu "Project Settings" \
+            "${COLOR_GREEN}1)${NC} Toggle favorite (currently: $is_fav)" \
+            "${COLOR_GREEN}2)${NC} View recent actions" \
+            "" \
+            "${COLOR_GREEN}b)${NC} Back"
 
         local choice
         read -p "Select option: " choice

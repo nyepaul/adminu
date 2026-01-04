@@ -7,8 +7,13 @@ run_project() {
     local project_dir="$1"
     local project_name=$(basename "$project_dir")
     local log_file=""
+    local width=$(get_ui_width)
 
-    echo -e "\n${COLOR_YELLOW}═══ Running: $project_name ═══${NC}\n"
+    echo ""
+    draw_box_top $width
+    draw_box_centered "${COLOR_YELLOW}Running: $project_name${NC}" $width
+    draw_box_bottom $width
+    echo ""
 
     if [ "$ENABLE_LOGGING" = "true" ]; then
         mkdir -p "$ADMINU_DIR/logs/$project_name"
@@ -68,11 +73,10 @@ run_django() {
     local project_dir="$1"
     local log_file="$2"
 
-    echo -e "${COLOR_GREEN}Found Django project${NC}"
-    echo "Options:"
-    echo "  1) runserver (default: 0.0.0.0:8000)"
-    echo "  2) runserver with custom host:port"
-    echo "  3) Cancel"
+    render_menu "Django Project Detected" \
+        "${COLOR_GREEN}1)${NC} runserver (default: 0.0.0.0:8000)" \
+        "${COLOR_GREEN}2)${NC} runserver with custom host:port" \
+        "${COLOR_GREEN}3)${NC} Cancel"
 
     local choice
     read -p "Choice [1]: " choice
@@ -110,13 +114,10 @@ run_nodejs() {
     local project_dir="$1"
     local log_file="$2"
 
-    echo -e "${COLOR_GREEN}Found Node.js project${NC}"
-
     # Show available scripts
     if grep -q '"scripts"' package.json; then
-        echo "Available scripts:"
-        grep -A20 '"scripts"' package.json | grep '":' | sed 's/.*"\(.*\)".*/  - \1/'
-        echo ""
+        local scripts=($(grep -A20 '"scripts"' package.json | grep '":' | sed 's/.*"\(.*\)".*/\1/'))
+        render_menu "Node.js Scripts" "${scripts[@]}"
     fi
 
     if grep -q '"start"' package.json; then
@@ -145,10 +146,11 @@ run_makefile() {
     local project_dir="$1"
     local log_file="$2"
 
-    echo -e "${COLOR_GREEN}Found Makefile${NC}"
-    echo "Available targets:"
-    make -qp 2>/dev/null | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' | sort -u | head -20 | sed 's/^/  - /'
-    echo ""
+    local targets=($(make -qp 2>/dev/null | awk -F':' '/^[a-zA-Z0-9][^$#\/\t=]*:([^=]|$)/ {split($1,A,/ /);for(i in A)print A[i]}' | sort -u | head -20))
+    
+    if [ ${#targets[@]} -gt 0 ]; then
+        render_menu "Makefile Targets" "${targets[@]}"
+    fi
 
     read -p "Enter target to run (or Enter to skip): " target
     if [ -n "$target" ]; then
@@ -164,12 +166,15 @@ run_makefile() {
 run_custom_script() {
     local project_dir="$1"
     local log_file="$2"
+    local width=$(get_ui_width)
 
-    echo -e "${COLOR_YELLOW}No standard run configuration detected${NC}"
-    echo ""
-    echo "Executable files in directory:"
-    find . -maxdepth 1 -type f -executable 2>/dev/null | sed 's|^\./|  - |'
-    echo ""
+    local exec_files=($(find . -maxdepth 1 -type f -executable 2>/dev/null | sed 's|^\./||'))
+    
+    if [ ${#exec_files[@]} -gt 0 ]; then
+        render_menu "Executable files in directory" "${exec_files[@]}"
+    else
+        warning_message "No executable files found"
+    fi
 
     read -p "Enter script name to run (or Enter to skip): " script
     if [ -n "$script" ]; then
@@ -187,8 +192,13 @@ test_project() {
     local project_name=$(basename "$project_dir")
     local timestamp=$(date +%Y%m%d_%H%M%S)
     local test_log="$ADMINU_DIR/project_status/$project_name/tests/${timestamp}.log"
+    local width=$(get_ui_width)
 
-    echo -e "\n${COLOR_YELLOW}═══ Testing: $project_name ═══${NC}\n"
+    echo ""
+    draw_box_top $width
+    draw_box_centered "${COLOR_YELLOW}Testing: $project_name${NC}" $width
+    draw_box_bottom $width
+    echo ""
 
     mkdir -p "$ADMINU_DIR/project_status/$project_name/tests"
 
@@ -327,11 +337,7 @@ show_test_history() {
         return 1
     fi
 
-    echo ""
-    echo -e "${COLOR_YELLOW}Test History: $project${NC}"
-    echo ""
-
-    local index=1
+    local history_items=()
     while IFS= read -r test_file; do
         local timestamp=$(basename "$test_file" .log)
         local exit_code=$(grep "EXIT_CODE=" "$test_file" | cut -d= -f2)
@@ -344,11 +350,11 @@ show_test_history() {
             color="$COLOR_GREEN"
         fi
 
-        echo -e "$index) ${color}${status}${NC} - ${timestamp} - ${duration}s"
-        ((index++))
+        history_items+=("${color}${status}${NC} - ${timestamp} - ${duration}s")
     done < <(find "$test_dir" -type f -name "*.log" -printf '%T+ %p\n' | sort -r | head -10 | cut -d' ' -f2-)
 
-    echo ""
+    render_menu "Test History: $project" "${history_items[@]}"
+
     return 0
 }
 
@@ -395,9 +401,12 @@ stop_project() {
 show_project_status() {
     local project="$1"
     local project_dir="$SRC_DIR/$project"
+    local width=$(get_ui_width)
 
     echo ""
-    echo -e "${COLOR_YELLOW}═══ Status: $project ═══${NC}"
+    draw_box_top $width
+    draw_box_centered "${COLOR_YELLOW}Status: $project${NC}" $width
+    draw_box_bottom $width
     echo ""
 
     # Git status
