@@ -28,25 +28,28 @@ get_ui_width() {
 }
 
 # Box-drawing helper functions (ported from security-scanner)
+# Style: Single thin line, Green color
+readonly BOX_COLOR="${COLOR_GREEN}"
+
 draw_box_top() {
     local width="${1:-60}"
-    echo -ne "${COLOR_CYAN}╔"
-    printf '═%.0s' $(seq 1 $((width-2)))
-    echo -e "╗${NC}"
+    echo -ne "${BOX_COLOR}┌"
+    printf '─%.0s' $(seq 1 $((width-2)))
+    echo -e "┐${NC}"
 }
 
 draw_box_bottom() {
     local width="${1:-60}"
-    echo -ne "${COLOR_CYAN}╚"
-    printf '═%.0s' $(seq 1 $((width-2)))
-    echo -e "╝${NC}"
+    echo -ne "${BOX_COLOR}└"
+    printf '─%.0s' $(seq 1 $((width-2)))
+    echo -e "┘${NC}"
 }
 
 draw_box_separator() {
     local width="${1:-60}"
-    echo -ne "${COLOR_CYAN}╟"
+    echo -ne "${BOX_COLOR}├"
     printf '─%.0s' $(seq 1 $((width-2)))
-    echo -e "╢${NC}"
+    echo -e "┤${NC}"
 }
 
 draw_box_line() {
@@ -61,9 +64,9 @@ draw_box_line() {
     # Safety check for negative padding
     [ $padding -lt 0 ] && padding=0
 
-    echo -ne "${COLOR_CYAN}║${NC} ${content}"
+    echo -ne "${BOX_COLOR}│${NC} ${content}"
     printf "%${padding}s" ""
-    echo -e "${COLOR_CYAN}║${NC}"
+    echo -e "${BOX_COLOR}│${NC}"
 }
 
 draw_box_centered() {
@@ -75,11 +78,11 @@ draw_box_centered() {
     local left_pad=$(( (width - content_len - 2) / 2 ))
     local right_pad=$(( width - content_len - left_pad - 2 ))
     
-    echo -ne "${COLOR_CYAN}║${NC}"
+    echo -ne "${BOX_COLOR}│${NC}"
     printf "%${left_pad}s" ""
     echo -ne "${content}"
     printf "%${right_pad}s" ""
-    echo -e "${COLOR_CYAN}║${NC}"
+    echo -e "${BOX_COLOR}│${NC}"
 }
 
 # Display headers
