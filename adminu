@@ -10,7 +10,7 @@ SRC_DIR="/home/paul/src"
 ADMINU_DIR="/home/paul/src/.adminu"
 
 # Script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 LIB_DIR="$SCRIPT_DIR/lib/adminu"
 
 # Load libraries
@@ -520,16 +520,7 @@ main_menu() {
         render_project_list "${all_projects[@]}"
 
         # Show quick actions
-        echo -e "${COLOR_CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${COLOR_CYAN}║${NC} ${COLOR_YELLOW}Quick Actions:${NC}                                             ${COLOR_CYAN}║${NC}"
-        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#${NC}   = Show project menu      ${COLOR_GREEN}#v${NC} = View overview       ${COLOR_CYAN}║${NC}"
-        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#r${NC}  = Run project            ${COLOR_GREEN}#t${NC} = Test project        ${COLOR_CYAN}║${NC}"
-        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#c${NC}  = Launch Claude Code     ${COLOR_GREEN}#g${NC} = Launch Gemini       ${COLOR_CYAN}║${NC}"
-        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#e${NC}  = Edit files             ${COLOR_GREEN}#f${NC} = File manager        ${COLOR_CYAN}║${NC}"
-        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#o${NC}  = Open terminal          ${COLOR_GREEN}#s${NC} = Show status         ${COLOR_CYAN}║${NC}"
-        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}q${NC}   = Quit                                                 ${COLOR_CYAN}║${NC}"
-        echo -e "${COLOR_CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
-        echo ""
+        render_quick_actions
 
         local input
         read -p "Select project or action: " input

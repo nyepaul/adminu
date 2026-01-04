@@ -14,6 +14,19 @@ readonly COLOR_MAGENTA='\033[0;35m'
 readonly COLOR_BOLD='\033[1m'
 readonly NC='\033[0m'
 
+# Helper to get consistent width
+get_ui_width() {
+    local term_width=$(tput cols 2>/dev/null || echo 80)
+    # Cap width at 100 to avoid being too wide on large screens, min 60
+    if [ "$term_width" -gt 100 ]; then
+        echo 100
+    elif [ "$term_width" -lt 60 ]; then
+        echo 60
+    else
+        echo "$term_width"
+    fi
+}
+
 # Box-drawing helper functions (ported from security-scanner)
 draw_box_top() {
     local width="${1:-60}"
@@ -41,22 +54,42 @@ draw_box_line() {
     local width="${2:-60}"
 
     # Strip ANSI codes for length calculation
-    local visual_content=$(echo -e "$content" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g')
+    local visual_content=$(strip_ansi "$content")
     local content_len=${#visual_content}
     local padding=$((width - content_len - 3))
+    
+    # Safety check for negative padding
+    [ $padding -lt 0 ] && padding=0
 
     echo -ne "${COLOR_CYAN}║${NC} ${content}"
     printf "%${padding}s" ""
     echo -e "${COLOR_CYAN}║${NC}"
 }
 
+draw_box_centered() {
+    local content="$1"
+    local width="${2:-60}"
+    
+    local visual_content=$(strip_ansi "$content")
+    local content_len=${#visual_content}
+    local left_pad=$(( (width - content_len - 2) / 2 ))
+    local right_pad=$(( width - content_len - left_pad - 2 ))
+    
+    echo -ne "${COLOR_CYAN}║${NC}"
+    printf "%${left_pad}s" ""
+    echo -ne "${content}"
+    printf "%${right_pad}s" ""
+    echo -e "${COLOR_CYAN}║${NC}"
+}
+
 # Display headers
 display_main_header() {
+    local width=$(get_ui_width)
     clear
     echo ""
-    echo -e "${COLOR_CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${COLOR_CYAN}║${COLOR_WHITE}              AdminU - Project Administration              ${COLOR_CYAN}║${NC}"
-    echo -e "${COLOR_CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+    draw_box_top $width
+    draw_box_centered "${COLOR_WHITE}AdminU - Project Administration${NC}" $width
+    draw_box_bottom $width
     echo ""
 
     # Display stats if available
@@ -71,24 +104,12 @@ display_main_header() {
 
 display_project_header() {
     local project_name="$1"
-    local width=60
+    local width=$(get_ui_width)
 
     clear
     echo ""
     draw_box_top $width
-
-    # Center the project name
-    local header="Project: $project_name"
-    local header_len=${#header}
-    local left_pad=$(( (width - header_len - 2) / 2 ))
-    local right_pad=$(( width - header_len - left_pad - 2 ))
-
-    echo -ne "${COLOR_CYAN}║${NC}"
-    printf "%${left_pad}s" ""
-    echo -ne "${COLOR_WHITE}${header}${NC}"
-    printf "%${right_pad}s" ""
-    echo -e "${COLOR_CYAN}║${NC}"
-
+    draw_box_centered "${COLOR_WHITE}Project: $project_name${NC}" $width
     draw_box_bottom $width
     echo ""
 }
@@ -151,7 +172,7 @@ render_menu() {
     local title="$1"
     shift
     local items=("$@")
-    local width=60
+    local width=$(get_ui_width)
 
     draw_box_top $width
     draw_box_line "${COLOR_YELLOW}${title}${NC}" $width
@@ -165,10 +186,24 @@ render_menu() {
     echo ""
 }
 
+# Helper to strip ANSI codes for length calculations
+strip_ansi() {
+    echo -e "$1" | sed 's/\x1B\[[0-9;]*[a-zA-Z]//g'
+}
+
 render_project_list() {
     local view_mode="${VIEW_MODE:-grid}"
     local projects=("$@")
-    local width=60
+    local width=$(get_ui_width)
+    
+    # Calculate column width: (Total - margin) / 2
+    # Margin: 2 chars left padding + 2 chars gap
+    local col_width=$(( (width - 4) / 2 ))
+    
+    # Enforce minimum column width or fallback to list view
+    if [ "$col_width" -lt 30 ]; then
+        view_mode="list"
+    fi
 
     if [ ${#projects[@]} -eq 0 ]; then
         warning_message "No projects found in $SRC_DIR"
@@ -193,9 +228,19 @@ render_project_list() {
 
             # Print in columns
             if (( index % 2 == 1 )); then
-                printf " %-58s" "$(echo -e "$display")"
+                # Left column: Calculate visible length to pad correctly
+                local visible_text=$(strip_ansi "$display")
+                local visible_len=${#visible_text}
+                local padding=$(( col_width - visible_len ))
+                
+                # Ensure at least one space of padding
+                [ $padding -lt 1 ] && padding=1
+                
+                echo -ne " ${display}"
+                printf "%${padding}s" ""
             else
-                echo -e "$display"
+                # Right column
+                echo -e "${display}"
             fi
 
             ((index++))
@@ -224,9 +269,23 @@ render_project_list() {
     return 0
 }
 
+render_quick_actions() {
+    local width=$(get_ui_width)
+    draw_box_top $width
+    draw_box_line "${COLOR_YELLOW}Quick Actions:${NC}" $width
+    draw_box_line "  ${COLOR_GREEN}#${NC}   = Show project menu      ${COLOR_GREEN}#v${NC} = View overview" $width
+    draw_box_line "  ${COLOR_GREEN}#r${NC}  = Run project            ${COLOR_GREEN}#t${NC} = Test project" $width
+    draw_box_line "  ${COLOR_GREEN}#c${NC}  = Launch Claude Code     ${COLOR_GREEN}#g${NC} = Launch Gemini" $width
+    draw_box_line "  ${COLOR_GREEN}#e${NC}  = Edit files             ${COLOR_GREEN}#f${NC} = File manager" $width
+    draw_box_line "  ${COLOR_GREEN}#o${NC}  = Open terminal          ${COLOR_GREEN}#s${NC} = Show status" $width
+    draw_box_line "  ${COLOR_GREEN}q${NC}   = Quit" $width
+    draw_box_bottom $width
+    echo ""
+}
+
 render_action_menu() {
     local project_name="$1"
-    local width=60
+    local width=$(get_ui_width)
 
     draw_box_top $width
     draw_box_line "${COLOR_YELLOW}Actions: ${project_name}${NC}" $width
