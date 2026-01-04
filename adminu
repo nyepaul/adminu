@@ -1,0 +1,565 @@
+#!/bin/bash
+
+# adminu - Administration Menu for ~/src projects (Refactored)
+# A modular menu-driven interface to manage, run, test, and enhance projects
+
+set -uo pipefail
+
+# Base directory
+SRC_DIR="/home/paul/src"
+ADMINU_DIR="/home/paul/src/.adminu"
+
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/lib/adminu"
+
+# Load libraries
+for lib in ui_functions config_functions project_functions action_functions file_functions ai_functions; do
+    if [ -f "$LIB_DIR/${lib}.sh" ]; then
+        source "$LIB_DIR/${lib}.sh" || { echo "ERROR: Failed to load $lib.sh"; exit 1; }
+    else
+        echo "ERROR: Library not found: $LIB_DIR/${lib}.sh"
+        echo "Please ensure all library files exist in $LIB_DIR/"
+        exit 1
+    fi
+done
+
+# Initialize configuration
+load_config
+init_default_config
+
+# Submenu functions
+
+view_submenu() {
+    local project="$1"
+    local project_dir="$SRC_DIR/$project"
+
+    while true; do
+        display_project_header "$project - View"
+
+        echo -e "${COLOR_YELLOW}View Options:${NC}"
+        echo ""
+        echo -e " ${COLOR_GREEN}1)${NC} Overview (README/CLAUDE.md)"
+        echo -e " ${COLOR_GREEN}2)${NC} Files (browse directory)"
+        echo -e " ${COLOR_GREEN}3)${NC} Logs (recent activity)"
+        echo -e " ${COLOR_GREEN}4)${NC} Git status"
+        echo -e " ${COLOR_GREEN}5)${NC} Project status (all)"
+        echo ""
+        echo -e " ${COLOR_GREEN}b)${NC} Back"
+        echo ""
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                # Show overview (original show_overview function logic)
+                echo -e "\n${COLOR_YELLOW}═══ Project Overview: $project ═══${NC}\n"
+                if [[ -f "$project_dir/CLAUDE.md" ]]; then
+                    echo -e "${COLOR_GREEN}Found CLAUDE.md:${NC}\n"
+                    less "$project_dir/CLAUDE.md"
+                elif [[ -f "$project_dir/README.md" ]]; then
+                    echo -e "${COLOR_GREEN}Found README.md:${NC}\n"
+                    less "$project_dir/README.md"
+                else
+                    echo -e "${COLOR_YELLOW}No documentation found${NC}"
+                    echo ""
+                    ls -lah "$project_dir" | head -20
+                fi
+                pause_for_user
+                ;;
+            2)
+                browse_all_files "$project_dir"
+                pause_for_user
+                ;;
+            3)
+                tail_project_logs "$project"
+                pause_for_user
+                ;;
+            4)
+                cd "$project_dir" && git status 2>/dev/null || echo "Not a git repository"
+                pause_for_user
+                ;;
+            5)
+                show_project_status "$project"
+                pause_for_user
+                ;;
+            b|B)
+                return 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+run_submenu() {
+    local project="$1"
+    local project_dir="$SRC_DIR/$project"
+
+    while true; do
+        display_project_header "$project - Run"
+
+        echo -e "${COLOR_YELLOW}Run Options:${NC}"
+        echo ""
+        echo -e " ${COLOR_GREEN}1)${NC} Start project"
+        echo -e " ${COLOR_GREEN}2)${NC} Stop project"
+        echo -e " ${COLOR_GREEN}3)${NC} Show status"
+        echo -e " ${COLOR_GREEN}4)${NC} Tail logs"
+        echo ""
+        echo -e " ${COLOR_GREEN}b)${NC} Back"
+        echo ""
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                run_project "$project_dir"
+                ;;
+            2)
+                stop_project "$project"
+                pause_for_user
+                ;;
+            3)
+                show_project_status "$project"
+                pause_for_user
+                ;;
+            4)
+                tail_project_logs "$project"
+                ;;
+            b|B)
+                return 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+test_submenu() {
+    local project="$1"
+    local project_dir="$SRC_DIR/$project"
+
+    while true; do
+        display_project_header "$project - Test"
+
+        echo -e "${COLOR_YELLOW}Test Options:${NC}"
+        echo ""
+        echo -e " ${COLOR_GREEN}1)${NC} Run tests"
+        echo -e " ${COLOR_GREEN}2)${NC} Show test history"
+        echo ""
+        echo -e " ${COLOR_GREEN}b)${NC} Back"
+        echo ""
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                test_project "$project_dir"
+                ;;
+            2)
+                show_test_history "$project"
+                pause_for_user
+                ;;
+            b|B)
+                return 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+edit_submenu() {
+    local project="$1"
+
+    edit_project_files "$project"
+}
+
+claude_submenu() {
+    local project="$1"
+    local project_dir="$SRC_DIR/$project"
+
+    while true; do
+        display_project_header "$project - Claude Code"
+
+        echo -e "${COLOR_YELLOW}Claude Options:${NC}"
+        echo ""
+        echo -e " ${COLOR_GREEN}1)${NC} Launch Claude Code"
+        echo -e " ${COLOR_GREEN}2)${NC} Launch with context selection"
+        echo -e " ${COLOR_GREEN}3)${NC} Edit CLAUDE.md"
+        echo -e " ${COLOR_GREEN}4)${NC} Validate CLAUDE.md"
+        echo ""
+        echo -e " ${COLOR_GREEN}b)${NC} Back"
+        echo ""
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                launch_claude_code "$project_dir"
+                ;;
+            2)
+                launch_claude_with_context "$project_dir"
+                ;;
+            3)
+                edit_readme "$project"
+                ;;
+            4)
+                local status=$(validate_claude_md "$project_dir")
+                echo "CLAUDE.md status: $status"
+                pause_for_user
+                ;;
+            b|B)
+                return 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+gemini_submenu() {
+    local project="$1"
+    local project_dir="$SRC_DIR/$project"
+
+    while true; do
+        display_project_header "$project - Gemini"
+
+        echo -e "${COLOR_YELLOW}Gemini Options:${NC}"
+        echo ""
+        echo -e " ${COLOR_GREEN}1)${NC} Launch Gemini"
+        echo -e " ${COLOR_GREEN}2)${NC} Edit GEMINI.md"
+        echo ""
+        echo -e " ${COLOR_GREEN}b)${NC} Back"
+        echo ""
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                launch_gemini "$project_dir"
+                ;;
+            2)
+                if [ -f "$project_dir/GEMINI.md" ]; then
+                    edit_file "$project_dir/GEMINI.md"
+                else
+                    if confirm_action "GEMINI.md not found. Create it?"; then
+                        create_gemini_template "$project_dir" "$project"
+                        edit_file "$project_dir/GEMINI.md"
+                    fi
+                fi
+                ;;
+            b|B)
+                return 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+tools_submenu() {
+    local project="$1"
+    local project_dir="$SRC_DIR/$project"
+
+    while true; do
+        display_project_header "$project - Tools"
+
+        echo -e "${COLOR_YELLOW}Tools:${NC}"
+        echo ""
+        echo -e " ${COLOR_GREEN}1)${NC} Open in file manager"
+        echo -e " ${COLOR_GREEN}2)${NC} Open terminal here"
+        echo -e " ${COLOR_GREEN}3)${NC} Git status"
+        echo -e " ${COLOR_GREEN}4)${NC} Docker status (if applicable)"
+        echo ""
+        echo -e " ${COLOR_GREEN}b)${NC} Back"
+        echo ""
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                if command -v xdg-open &>/dev/null; then
+                    xdg-open "$project_dir" &
+                    success_message "Opening file manager..."
+                else
+                    warning_message "xdg-open not found"
+                fi
+                pause_for_user
+                ;;
+            2)
+                if command -v gnome-terminal &>/dev/null; then
+                    gnome-terminal --working-directory="$project_dir" &
+                    success_message "Opening terminal..."
+                elif command -v xterm &>/dev/null; then
+                    cd "$project_dir" && xterm &
+                    success_message "Opening terminal..."
+                else
+                    warning_message "No terminal emulator found"
+                fi
+                pause_for_user
+                ;;
+            3)
+                cd "$project_dir" && git status 2>/dev/null || echo "Not a git repository"
+                pause_for_user
+                ;;
+            4)
+                if [ -f "$project_dir/docker-compose.yml" ]; then
+                    cd "$project_dir" && docker-compose ps
+                else
+                    warning_message "No docker-compose.yml found"
+                fi
+                pause_for_user
+                ;;
+            b|B)
+                return 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+settings_submenu() {
+    local project="$1"
+
+    while true; do
+        display_project_header "$project - Settings"
+
+        local is_fav=$(is_favorite "$project" && echo "yes" || echo "no")
+
+        echo -e "${COLOR_YELLOW}Project Settings:${NC}"
+        echo ""
+        echo -e " ${COLOR_GREEN}1)${NC} Toggle favorite (currently: $is_fav)"
+        echo -e " ${COLOR_GREEN}2)${NC} View recent actions"
+        echo ""
+        echo -e " ${COLOR_GREEN}b)${NC} Back"
+        echo ""
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                local result=$(toggle_favorite "$project")
+                if [ "$result" = "added" ]; then
+                    success_message "Added to favorites"
+                else
+                    success_message "Removed from favorites"
+                fi
+                pause_for_user
+                ;;
+            2)
+                echo ""
+                echo "Recent actions for $project:"
+                get_recent_actions "$project" 10
+                pause_for_user
+                ;;
+            b|B)
+                return 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+# Project menu
+show_project_menu() {
+    local project_dir="$1"
+    local project_name=$(basename "$project_dir")
+
+    while true; do
+        render_action_menu "$project_name"
+
+        local choice
+        read -p "Select option: " choice
+
+        case "$choice" in
+            1)
+                view_submenu "$project_name"
+                ;;
+            2)
+                run_submenu "$project_name"
+                ;;
+            3)
+                test_submenu "$project_name"
+                ;;
+            4)
+                edit_submenu "$project_name"
+                ;;
+            5)
+                claude_submenu "$project_name"
+                ;;
+            6)
+                gemini_submenu "$project_name"
+                ;;
+            7)
+                tools_submenu "$project_name"
+                ;;
+            8)
+                settings_submenu "$project_name"
+                ;;
+            b|B)
+                return 0
+                ;;
+            q|Q)
+                exit 0
+                ;;
+            *)
+                error_message "Invalid selection"
+                pause_for_user
+                ;;
+        esac
+    done
+}
+
+# Quick action execution
+execute_action() {
+    local input="$1"
+    local projects=("${@:2}")
+
+    # Parse input (e.g., "5r" = project 5, run)
+    if [[ "$input" =~ ^([0-9]+)([a-z])$ ]]; then
+        local num="${BASH_REMATCH[1]}"
+        local action="${BASH_REMATCH[2]}"
+
+        if [ "$num" -lt 1 ] || [ "$num" -gt ${#projects[@]} ]; then
+            error_message "Invalid project number"
+            return 1
+        fi
+
+        local project_dir="${projects[$((num-1))]}"
+        local project_name=$(basename "$project_dir")
+
+        case "$action" in
+            r|$QUICK_ACTION_RUN)
+                run_project "$project_dir"
+                ;;
+            t|$QUICK_ACTION_TEST)
+                test_project "$project_dir"
+                ;;
+            c|$QUICK_ACTION_CLAUDE)
+                launch_claude_code "$project_dir"
+                ;;
+            g|$QUICK_ACTION_GEMINI)
+                launch_gemini "$project_dir"
+                ;;
+            v|$QUICK_ACTION_VIEW)
+                echo -e "\n${COLOR_YELLOW}═══ Project Overview: $project_name ═══${NC}\n"
+                if [[ -f "$project_dir/CLAUDE.md" ]]; then
+                    less "$project_dir/CLAUDE.md"
+                elif [[ -f "$project_dir/README.md" ]]; then
+                    less "$project_dir/README.md"
+                else
+                    ls -lah "$project_dir" | head -20
+                fi
+                pause_for_user
+                ;;
+            e|$QUICK_ACTION_EDIT)
+                edit_project_files "$project_name"
+                ;;
+            f|$QUICK_ACTION_FILES)
+                browse_all_files "$project_dir"
+                pause_for_user
+                ;;
+            o|$QUICK_ACTION_TERMINAL)
+                if command -v gnome-terminal &>/dev/null; then
+                    gnome-terminal --working-directory="$project_dir" &
+                elif command -v xterm &>/dev/null; then
+                    cd "$project_dir" && xterm &
+                fi
+                pause_for_user
+                ;;
+            s|$QUICK_ACTION_STATUS)
+                show_project_status "$project_name"
+                pause_for_user
+                ;;
+            *)
+                error_message "Unknown action: $action"
+                return 1
+                ;;
+        esac
+    else
+        return 1
+    fi
+
+    return 0
+}
+
+# Main menu
+main_menu() {
+    while true; do
+        display_main_header
+
+        # Get all projects
+        local all_projects=()
+        list_all_projects all_projects
+
+        # Display projects
+        render_project_list "${all_projects[@]}"
+
+        # Show quick actions
+        echo -e "${COLOR_CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${COLOR_CYAN}║${NC} ${COLOR_YELLOW}Quick Actions:${NC}                                             ${COLOR_CYAN}║${NC}"
+        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#${NC}   = Show project menu      ${COLOR_GREEN}#v${NC} = View overview       ${COLOR_CYAN}║${NC}"
+        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#r${NC}  = Run project            ${COLOR_GREEN}#t${NC} = Test project        ${COLOR_CYAN}║${NC}"
+        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#c${NC}  = Launch Claude Code     ${COLOR_GREEN}#g${NC} = Launch Gemini       ${COLOR_CYAN}║${NC}"
+        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#e${NC}  = Edit files             ${COLOR_GREEN}#f${NC} = File manager        ${COLOR_CYAN}║${NC}"
+        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}#o${NC}  = Open terminal          ${COLOR_GREEN}#s${NC} = Show status         ${COLOR_CYAN}║${NC}"
+        echo -e "${COLOR_CYAN}║${NC}  ${COLOR_GREEN}q${NC}   = Quit                                                 ${COLOR_CYAN}║${NC}"
+        echo -e "${COLOR_CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+
+        local input
+        read -p "Select project or action: " input
+
+        # Check if quit
+        if [[ "$input" == "q" ]] || [[ "$input" == "Q" ]]; then
+            echo ""
+            echo "Goodbye!"
+            exit 0
+        fi
+
+        # Check if it's a quick action
+        if execute_action "$input" "${all_projects[@]}"; then
+            continue
+        fi
+
+        # Otherwise, assume it's a project number
+        if [[ "$input" =~ ^[0-9]+$ ]]; then
+            if [ "$input" -ge 1 ] && [ "$input" -le ${#all_projects[@]} ]; then
+                show_project_menu "${all_projects[$((input-1))]}"
+            else
+                error_message "Invalid project number"
+                pause_for_user
+            fi
+        else
+            error_message "Invalid input"
+            pause_for_user
+        fi
+    done
+}
+
+# Entry point
+main_menu

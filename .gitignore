@@ -1,0 +1,21 @@
+# AdminU User Data
+.adminu/logs/
+.adminu/pids/
+.adminu/.project_cache
+.adminu/project_status/*/tests/*.log
+
+# Backup files
+*.old
+*.bak
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
